@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>New Tab</title>
+  <link rel="stylesheet" href="newtab.css">
+</head>
+<body>
+  <div id="bg"></div>
+  <div id="dim"></div>
+
+  <main id="app">
+    <nav id="tabs"></nav>
+    <div class="rule"></div>
+    <section id="grid"></section>
+  </main>
+
+  <!-- left rail -->
+  <div class="rail rail-left">
+    <button class="fab" id="btn-wallpaper" data-tip="Change wallpaper" data-tip-side="right"></button>
+    <input type="file" id="wall-input" accept="image/*" hidden>
+  </div>
+
+  <!-- right rail -->
+  <div class="rail rail-right">
+    <button class="fab" id="btn-search" data-tip="Search (/)"></button>
+    <button class="fab" id="btn-import" data-tip="Import / Export"></button>
+    <button class="fab" id="btn-incognito" data-tip="Open links in Incognito"></button>
+    <button class="fab" id="btn-select" data-tip="Select links"></button>
+    <button class="fab" id="btn-trash" data-tip="Trash"></button>
+    <button class="fab" id="btn-privacy" data-tip="Privacy blur"></button>
+    <button class="fab accent" id="btn-settings" data-tip="Settings"></button>
+  </div>
+
+  <aside id="drawer"><div class="drawer-head"><h3 id="drawer-title"></h3><button class="icon-btn" id="drawer-close"></button></div><div id="drawer-body"></div></aside>
+  <div id="selbar" hidden></div>
+  <div id="toast" hidden></div>
+  <div id="modal-root"></div>
+
+  <script src="newtab.js"></script>
+</body>
+</html>
