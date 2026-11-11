@@ -18,6 +18,8 @@ A visual, drag-and-drop bookmark manager that replaces Chrome's new tab page. Fr
 
 ## Install
 
+### Chrome / Chromium / Brave / Edge
+
 1. Download or clone this repo.
 2. Open `chrome://extensions` and turn on **Developer mode**.
 3. Click **Load unpacked** and choose this folder.
@@ -25,11 +27,17 @@ A visual, drag-and-drop bookmark manager that replaces Chrome's new tab page. Fr
 
 > Only one extension can replace the new tab page, so disable any other new-tab extension.
 
+### Firefox (142+)
+
+- **Quick test:** `about:debugging` → **This Firefox** → **Load Temporary Add-on** → pick `manifest.json`. Removed when Firefox restarts.
+- **Permanent:** zip the folder contents and upload to [addons.mozilla.org](https://addons.mozilla.org/developers/) as **Unlisted** — Mozilla signs it for free and you get an installable `.xpi`.
+- **Developer Edition / Nightly:** set `xpinstall.signatures.required` to `false` in `about:config` to install it unsigned.
+
 ## Notes
 
-- Incognito opening requires enabling **Allow in Incognito** on the extension's details page.
-- If `Ctrl+Shift+Y` is taken by another extension, change it at `chrome://extensions/shortcuts`.
-- Site logos load from Google's and DuckDuckGo's favicon services, falling back to Chrome's favicon cache.
+- Incognito opening requires **Allow in Incognito** (Chrome) or **Run in Private Windows** (Firefox).
+- If `Ctrl+Shift+Y` is taken, change it at `chrome://extensions/shortcuts` (Chrome) or `about:addons` → ⚙ → **Manage Extension Shortcuts** (Firefox). On Firefox for Linux, `Ctrl+Shift+Y` is also Firefox's own Downloads shortcut, so you may want to pick another.
+- Site logos load from Google's and DuckDuckGo's favicon services, falling back to Chrome's favicon cache in Chrome.
 
 ## License
 

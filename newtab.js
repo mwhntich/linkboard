@@ -24,7 +24,10 @@ const I = {
   bookmark: '<path d="M6 3h12v18l-6-4-6 4z"/>',
   file: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>',
 };
-const svg = (n) => `<svg viewBox="0 0 24 24">${I[n]}</svg>`;
+// Icons are parsed from the static table above (never from user data) into real SVG nodes.
+const svgParser = new DOMParser();
+const svg = (n) => document.importNode(
+  svgParser.parseFromString(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">${I[n]}</svg>`, 'image/svg+xml').documentElement, true);
 
 // ---------- helpers ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -34,7 +37,7 @@ function h(tag, props = {}, ...kids) {
   for (const [k, v] of Object.entries(props)) {
     if (v == null) continue;
     if (k === 'class') el.className = v;
-    else if (k === 'html') el.innerHTML = v;
+    else if (k === 'html') el.append(...[].concat(v));
     else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
     else if (k in el && k !== 'list') el[k] = v;
     else if (v !== false) el.setAttribute(k, v);
@@ -51,13 +54,15 @@ function normUrl(u) {
 }
 // Site logo: try Google's favicon service (real logos even for unvisited sites), then DuckDuckGo,
 // then Chrome's own favicon cache, then a letter badge. The working source is remembered per host.
+const IS_FIREFOX = /firefox/i.test(navigator.userAgent);
 const favCache = (() => { try { return JSON.parse(localStorage.getItem('favCache') || '{}'); } catch { return {}; } })();
 const favSources = (u) => {
   const host = hostOf(u);
   return [
     `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`,
     `https://icons.duckduckgo.com/ip3/${encodeURIComponent(host)}.ico`,
-    `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(u)}&size=32`,
+    // Chrome-only local favicon cache
+    ...(IS_FIREFOX ? [] : [`chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(u)}&size=32`]),
   ];
 };
 function favicon(url) {
@@ -147,7 +152,7 @@ function applyLook() {
   $('#bg').style.backgroundImage = wallpaper ? `url("${wallpaper}")` : preset ? `url("${preset.src}")` : '';
   document.body.classList.toggle('privacy', s.privacy);
   document.body.classList.toggle('selecting', selecting);
-  const set = (id, icon, cls, tip) => { const b = $(id); b.innerHTML = svg(icon); b.className = 'fab ' + (cls || ''); if (tip) b.dataset.tip = tip; };
+  const set = (id, icon, cls, tip) => { const b = $(id); b.replaceChildren(svg(icon)); b.className = 'fab ' + (cls || ''); if (tip) b.dataset.tip = tip; };
   set('#btn-privacy', s.privacy ? 'eyeOff' : 'eye', s.privacy ? 'on' : '', s.privacy ? 'Privacy blur ON - click to disable' : 'Privacy blur');
   set('#btn-incognito', 'incognito', s.incognito ? 'on-accent' : '', s.incognito ? 'Incognito ON - links open privately' : 'Open links in Incognito');
   set('#btn-select', 'select', selecting ? 'on-accent' : '');
@@ -195,7 +200,7 @@ function renderGrid() {
   const grid = $('#grid');
   grid.replaceChildren();
   for (const b of page().boards) grid.append(boardEl(b));
-  grid.append(h('button', { class: 'add-board', html: svg('plusCircle') + '<span>ADD BOARD</span>', onclick: addBoard }));
+  grid.append(h('button', { class: 'add-board', html: [svg('plusCircle'), h('span', {}, 'ADD BOARD')], onclick: addBoard }));
 }
 
 function boardEl(b) {
@@ -246,7 +251,7 @@ function boardEl(b) {
     commit();
   };
 
-  el.append(head, ul, h('button', { class: 'add-link', html: svg('plus') + 'Add link', onclick: () => addLink(b) }));
+  el.append(head, ul, h('button', { class: 'add-link', html: [svg('plus'), 'Add link'], onclick: () => addLink(b) }));
   return el;
 }
 
@@ -337,7 +342,9 @@ function wireLinkDrop(ul, b) {
 function openUrl(url, background = false) {
   if (state.settings.incognito) {
     chrome.windows.create({ url, incognito: true }).catch(() =>
-      toast('Allow LinkBoard in Incognito (chrome://extensions → Details) to use this'));
+      toast(IS_FIREFOX
+        ? 'Allow LinkBoard in private windows (about:addons → LinkBoard → Run in Private Windows)'
+        : 'Allow LinkBoard in Incognito (chrome://extensions → Details) to use this'));
     return;
   }
   if (background) return chrome.tabs.create({ url, active: false });
@@ -483,9 +490,9 @@ function renderSelbar() {
   bar.replaceChildren(
     h('b', {}, `${n} selected`),
     h('button', { class: 'btn', onclick: () => { const all = visible.every((id) => selected.has(id)); visible.forEach((id) => (all ? selected.delete(id) : selected.add(id))); render(); } }, 'All'),
-    h('button', { class: 'btn', disabled: !n, onclick: bulkMove, html: svg('move') + 'Move' }),
-    h('button', { class: 'btn', disabled: !n, onclick: () => [...selected].forEach((id) => openUrl(findLink(id).link.url, true)), html: svg('external') + 'Open' }),
-    h('button', { class: 'btn danger', disabled: !n, onclick: () => deleteLinks([...selected]), html: svg('trash') + 'Delete' }),
+    h('button', { class: 'btn', disabled: !n, onclick: bulkMove, html: [svg('move'), 'Move'] }),
+    h('button', { class: 'btn', disabled: !n, onclick: () => [...selected].forEach((id) => openUrl(findLink(id).link.url, true)), html: [svg('external'), 'Open'] }),
+    h('button', { class: 'btn danger', disabled: !n, onclick: () => deleteLinks([...selected]), html: [svg('trash'), 'Delete'] }),
     h('button', { class: 'btn', onclick: () => toggleSelect(false) }, 'Done'),
   );
 }
@@ -547,14 +554,14 @@ const drawerViews = {
     drawer('Import & Export',
       h('div', { class: 'sec' },
         h('h4', {}, 'Import'),
-        h('button', { class: 'btn block', html: svg('bookmark') + 'Import Chrome bookmarks', onclick: importChrome }),
-        h('button', { class: 'btn block', html: svg('file') + 'Import file (.html / .txt / .json)', onclick: () => $('#file-import').click() }),
+        h('button', { class: 'btn block', html: [svg('bookmark'), 'Import Chrome bookmarks'], onclick: importChrome }),
+        h('button', { class: 'btn block', html: [svg('file'), 'Import file (.html / .txt / .json)'], onclick: () => $('#file-import').click() }),
         h('p', { class: 'hint' }, 'HTML = bookmark export from any browser. TXT = one URL per line. JSON = LinkBoard backup.'),
       ),
       h('div', { class: 'sec' },
         h('h4', {}, 'Export'),
-        h('button', { class: 'btn block', html: svg('upload') + 'Download backup (.json)', onclick: exportJson }),
-        h('button', { class: 'btn block', html: svg('upload') + 'Export as browser bookmarks (.html)', onclick: exportHtml }),
+        h('button', { class: 'btn block', html: [svg('upload'), 'Download backup (.json)'], onclick: exportJson }),
+        h('button', { class: 'btn block', html: [svg('upload'), 'Export as browser bookmarks (.html)'], onclick: exportHtml }),
       ),
       h('input', { type: 'file', id: 'file-import', accept: '.html,.htm,.txt,.json', hidden: true, onchange: (e) => importFile(e.target.files[0]) }),
     );
@@ -625,7 +632,9 @@ const drawerViews = {
         h('div', { class: 'row' }, h('span', {}, 'Quick save current page'), h('kbd', {}, 'Ctrl+Shift+Y')),
         h('div', { class: 'row' }, h('span', {}, 'Search'), h('kbd', {}, '/')),
         h('div', { class: 'row' }, h('span', {}, 'Close panel / cancel'), h('kbd', {}, 'Esc')),
-        h('button', { class: 'btn', onclick: () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }) }, 'Change shortcut'),
+        IS_FIREFOX
+          ? h('p', { class: 'hint' }, 'To change it: about:addons → ⚙ (gear) → Manage Extension Shortcuts.')
+          : h('button', { class: 'btn', onclick: () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }) }, 'Change shortcut'),
         h('p', { class: 'hint' }, 'Quick save, the toolbar icon, and the right-click menu all save into an “Inbox” board on your current page.'),
       ),
     );
@@ -854,8 +863,7 @@ const confirmBox = (title, text) => modal({ title, text, ok: 'Confirm', danger: 
 function menu(x, y, items) {
   document.querySelector('.menu')?.remove();
   const m = h('div', { class: 'menu' }, ...items.filter(Boolean).map(([icon, label, fn, cls]) =>
-    h('button', { class: cls || '', html: svg(icon) + `<span></span>`, onclick: () => { m.remove(); fn(); } })));
-  [...m.children].forEach((b, i) => (b.querySelector('span').textContent = items.filter(Boolean)[i][1]));
+    h('button', { class: cls || '', html: [svg(icon), h('span', {}, label)], onclick: () => { m.remove(); fn(); } })));
   document.body.append(m);
   const r = m.getBoundingClientRect();
   m.style.left = Math.max(8, Math.min(x, innerWidth - r.width - 8)) + 'px';
@@ -866,12 +874,12 @@ function menu(x, y, items) {
 }
 
 // ---------- wiring ----------
-$('#btn-wallpaper').innerHTML = svg('image');
-$('#btn-search').innerHTML = svg('search');
-$('#btn-import').innerHTML = svg('download');
-$('#btn-trash').innerHTML = svg('trash');
-$('#btn-settings').innerHTML = svg('gear');
-$('#drawer-close').innerHTML = svg('x');
+$('#btn-wallpaper').replaceChildren(svg('image'));
+$('#btn-search').replaceChildren(svg('search'));
+$('#btn-import').replaceChildren(svg('download'));
+$('#btn-trash').replaceChildren(svg('trash'));
+$('#btn-settings').replaceChildren(svg('gear'));
+$('#drawer-close').replaceChildren(svg('x'));
 
 $('#btn-wallpaper').onclick = () => $('#wall-input').click();
 $('#btn-search').onclick = () => openDrawer('search');
